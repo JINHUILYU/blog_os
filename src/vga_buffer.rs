@@ -3,9 +3,10 @@ use core::fmt;
 use lazy_static::lazy_static;
 use spin::Mutex;
 
-#[allow(dead_code)]
+#[allow(dead_code)]  // 允许未使用的代码
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
+// 使用枚举类型表示颜色
 pub enum Color {
     Black = 0,
     Blue = 1,
@@ -51,9 +52,9 @@ struct Buffer {
 }
 
 pub struct Writer {
-    column_position: usize,
-    color_code: ColorCode,
-    buffer: &'static mut Buffer,
+    column_position: usize,  // 光标位置
+    color_code: ColorCode,  // 前景色和背景色
+    buffer: &'static mut Buffer,  // VGA 缓冲区 static 表示生命周期为整个程序的运行时间有效
 }
 
 lazy_static! {
@@ -79,20 +80,9 @@ impl Writer {
                 let color_code = self.color_code;
                 self.buffer.chars[row][col].write(ScreenChar {
                     ascii_character: byte,
-                    color_code,
+                    color_code: color_code,
                 });
                 self.column_position += 1;
-            }
-        }
-    }
-
-    fn write_string(&mut self, s: &str) {
-        for byte in s.bytes() {
-            match byte {
-                // 可打印 ASCII 码或换行符
-                0x20..=0x7e | b'\n' => self.write_byte(byte),
-                // 不可打印 ASCII 码
-                _ => self.write_byte(0xfe),
             }
         }
     }
@@ -117,6 +107,18 @@ impl Writer {
             self.buffer.chars[row][col].write(blank);
         }
     }
+
+    pub fn write_string(&mut self, s: &str) {
+        for byte in s.bytes() {
+            match byte {
+                // 可以是能打印的 ASCII 码字节，也可以是换行符
+                0x20..=0x7e | b'\n' => self.write_byte(byte),
+                // 不包含在上述范围之内的字节
+                _ => self.write_byte(0xfe),
+            }
+
+        }
+    }
 }
 
 impl fmt::Write for Writer {
@@ -124,4 +126,21 @@ impl fmt::Write for Writer {
         self.write_string(s);
         Ok(())
     }
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
 }
