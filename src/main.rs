@@ -13,7 +13,16 @@ pub extern "C" fn _start() -> ! {
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
 
-    vga_buffer::print_something(); // 调用 vga_buffer 模块的 print_something 函数
+    use core::fmt::Write;
+    vga_buffer::WRITER.lock().write_str("Hello again").unwrap();
+    // write! 宏类似于 println! 宏，但是它不会自动换行
+    write!(
+        vga_buffer::WRITER.lock(),  // 获取 WRITER 的锁
+        ", some numbers: {} {}",
+        42,
+        1.337
+    )
+    .unwrap();
 
     loop {}
 }
