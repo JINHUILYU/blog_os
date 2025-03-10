@@ -18,11 +18,16 @@ pub extern "C" fn _start() -> ! {
     // write! 宏类似于 println! 宏，但是它不会自动换行
     write!(
         vga_buffer::WRITER.lock(),  // 获取 WRITER 的锁
-        ", some numbers: {} {}",
+        ", some numbers: {} {}\n",
         42,
         1.337
     )
     .unwrap();
+
+    print!("Hello again");
+    println!("Hello World{}", "!");
+
+    panic!("Some panic message");
 
     loop {}
 }
@@ -34,5 +39,11 @@ fn panic(_info: &PanicInfo) -> ! {
     PanicInfo 包含了 panic 的信息，比如 panic 的文件名、行号、panic 的信息等。
     ! 表示这个函数从不返回，这是因为 panic 之后我们无法恢复，只能停止程序。
      */
+    if let Some(location) = _info.location() {
+        println!("Panicked at {}:{} {}", location.file(), location.line(), _info.message());
+    } else {
+        println!("{}", _info.message());
+    }
+
     loop {}
 }

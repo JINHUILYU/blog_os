@@ -129,3 +129,22 @@ impl fmt::Write for Writer {
         Ok(())
     }
 }
+
+#[macro_export]
+macro_rules! print {
+    // print! 宏接受任意数量的参数，并将它们传递给 _print 函数
+    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    // println! 宏类似于 print! 宏，但是它会在最后加上一个换行符
+    () => ($crate::print!("\n"));
+    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+}
+
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    use core::fmt::Write;
+    WRITER.lock().write_fmt(args).unwrap();
+}
