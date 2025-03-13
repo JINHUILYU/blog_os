@@ -59,7 +59,10 @@ pub struct Writer {
     buffer: &'static mut Buffer,
 }
 
+// lazy_static: 这个变量的值将在第一次使用时计算，而非在编译时计算。
 lazy_static! {
+    // 为了实现无需随时拥有 Writer 实例，便能直接使用其方法，将其定义为 static
+    // 使用 Mutex 来实现多线程安全
     pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
         color_code: ColorCode::new(Color::Yellow, Color::Black),
