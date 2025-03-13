@@ -4,8 +4,25 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-mod vga_buffer; // 导入 vga_buffer 模块
+use core::panic::PanicInfo;
+
 mod serial; // 导入 serial 模块
+mod vga_buffer; // 导入 vga_buffer 模块
+
+pub trait Testable {
+    fn run(&self) -> ();
+}
+
+impl<T> Testable for T
+where
+    T: Fn(),
+{
+    fn run(&self) {
+        serial_print!("{}...\t", core::any::type_name::<T>());
+        self();
+        serial_println!("[ok]");
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -23,7 +40,6 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
     }
 }
 
-use core::panic::PanicInfo;
 static HELLO: &[u8] = b"Hello World!";
 #[no_mangle] // 不重整函数名
 pub extern "C" fn _start() -> ! {
@@ -32,20 +48,20 @@ pub extern "C" fn _start() -> ! {
      */
     // this function is the entry point, since the linker looks for a function
     // named `_start` by default
-
-    use core::fmt::Write;
-    vga_buffer::WRITER.lock().write_str("Hello again").unwrap();
-    // write! 宏类似于 println! 宏，但是它不会自动换行
-    write!(
-        vga_buffer::WRITER.lock(), // 获取 WRITER 的锁
-        ", some numbers: {} {}\n",
-        42,
-        1.337
-    )
-    .unwrap();
-
-    print!("Hello again");
-    println!("Hello World{}", "!");
+    //
+    // use core::fmt::Write;
+    // vga_buffer::WRITER.lock().write_str("Hello again").unwrap();
+    // // write! 宏类似于 println! 宏，但是它不会自动换行
+    // write!(
+    //     vga_buffer::WRITER.lock(), // 获取 WRITER 的锁
+    //     ", some numbers: {} {}\n",
+    //     42,
+    //     1.337
+    // )
+    // .unwrap();
+    //
+    // print!("Hello again");
+    // println!("Hello World{}", "!");
 
     #[cfg(test)]
     test_main();
@@ -85,20 +101,16 @@ fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 
-
 #[cfg(test)]
-pub fn test_runner(tests: &[&dyn Fn()]) {
+pub fn test_runner(tests: &[&dyn Testable]) {
     serial_println!("Running {} tests", tests.len());
     for test in tests {
-        test();
+        test.run();
     }
-    exit_qemu(QemuExitCode::Success);  // 退出 QEMU
+    exit_qemu(QemuExitCode::Success); // 退出 QEMU
 }
 
 #[test_case]
 fn trivial_assertion() {
-    serial_print!("trivial assertion... ");
     assert_eq!(1, 1);
-    serial_println!("[ok]");
-    loop {}
 }
