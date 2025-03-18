@@ -2,11 +2,10 @@
 #![no_main] // 禁用所有 Rust 层级的入口点
 #![feature(custom_test_frameworks)]
 #![test_runner(blog_os::test_runner)]
-#![reexport_test_harness_main = "test_main"]
+#![reexport_test_harness_main = "test_main"] // 测试框架入口函数
 
-use core::panic::PanicInfo;
 use blog_os::println;
-
+use core::panic::PanicInfo;
 
 #[no_mangle] // 不重整函数名
 pub extern "C" fn _start() -> ! {
@@ -18,9 +17,15 @@ pub extern "C" fn _start() -> ! {
 
     println!("Hello World!");
 
-    #[cfg(test)]
-    test_main();
+    blog_os::init(); // 初始化 IDT
 
+    // invoke a breakpoint exception
+    x86_64::instructions::interrupts::int3();
+
+    #[cfg(test)]
+    test_main(); // 测试框架入口函数
+
+    println!("It did not crash!");
     loop {}
 }
 
