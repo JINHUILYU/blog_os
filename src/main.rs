@@ -21,16 +21,17 @@ pub extern "C" fn _start() -> ! {
 
     // invoke a breakpoint exception
     // x86_64::instructions::interrupts::int3();
-    
+
     // 触发一个页错误
     // unsafe {
     //     *(0xdeadbeef as *mut u8) = 42;
     // };
-    
+
     fn stack_overflow() {
         stack_overflow(); // 递归调用，导致栈溢出
     }
     
+    // 栈溢出测试
     // stack_overflow();
     
     #[cfg(test)]
