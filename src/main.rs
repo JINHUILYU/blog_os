@@ -7,7 +7,7 @@
 use blog_os::println;
 use core::panic::PanicInfo;
 
-#[no_mangle] // 不重整函数名
+#[unsafe(no_mangle)] // 不重整函数名
 pub extern "C" fn _start() -> ! {
     /*
     _start 函数是程序的入口点，这个函数是一个裸函数，没有 Rust 的运行时支持。
@@ -20,8 +20,19 @@ pub extern "C" fn _start() -> ! {
     blog_os::init(); // 初始化 IDT
 
     // invoke a breakpoint exception
-    x86_64::instructions::interrupts::int3();
-
+    // x86_64::instructions::interrupts::int3();
+    
+    // 触发一个页错误
+    // unsafe {
+    //     *(0xdeadbeef as *mut u8) = 42;
+    // };
+    
+    fn stack_overflow() {
+        stack_overflow(); // 递归调用，导致栈溢出
+    }
+    
+    // stack_overflow();
+    
     #[cfg(test)]
     test_main(); // 测试框架入口函数
 
