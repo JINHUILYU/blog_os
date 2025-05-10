@@ -1,7 +1,7 @@
 #![no_std] // 禁止系统自动链接到标准库
 #![no_main] // 禁用所有 Rust 层级的入口点
-#![feature(custom_test_frameworks)]
-#![test_runner(blog_os::test_runner)]
+#![feature(custom_test_frameworks)] // 启用自定义测试框架
+#![test_runner(blog_os::test_runner)] // 设置测试框架
 #![reexport_test_harness_main = "test_main"] // 测试框架入口函数
 
 use blog_os::println;
@@ -27,9 +27,9 @@ pub extern "C" fn _start() -> ! {
     //     *(0xdeadbeef as *mut u8) = 42;
     // };
 
-    fn stack_overflow() {
-        stack_overflow(); // 递归调用，导致栈溢出
-    }
+    // fn stack_overflow() {
+    //     stack_overflow(); // 递归调用，导致栈溢出
+    // }
     
     // 栈溢出测试
     // stack_overflow();
@@ -38,7 +38,10 @@ pub extern "C" fn _start() -> ! {
     test_main(); // 测试框架入口函数
 
     println!("It did not crash!");
-    loop {}
+    loop {
+        use blog_os::print;
+        print!("-");
+    }
 }
 
 // 定义 panic 函数，这个函数将在出现 panic 时被调用

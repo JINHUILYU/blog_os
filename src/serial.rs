@@ -13,10 +13,17 @@ lazy_static! {
 #[doc(hidden)]
 pub fn _print(args: ::core::fmt::Arguments) {
     use core::fmt::Write;
-    SERIAL1
-        .lock()
-        .write_fmt(args)
-        .expect("Printing to serial failed");
+    use x86_64::instructions::interrupts;
+    
+    // Avoid deadlocks when printing from interrupts
+    interrupts::without_interrupts(|| {
+        // 在没有中断的情况下执行写入操作
+        // 这里使用了 SERIAL1 的锁来确保线程安全
+        SERIAL1
+            .lock()
+            .write_fmt(args)
+            .expect("Printing to serial failed");
+    });
 }
 
 /// Prints to the host through the serial interface.

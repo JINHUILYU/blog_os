@@ -15,6 +15,8 @@ pub mod gdt;
 pub fn init() {
     gdt::init(); // 初始化全局描述符表
     interrupts::init_idt(); // 初始化中断描述符表
+    unsafe { interrupts::PICS.lock().initialize() }; // 初始化可编程中断控制器
+    x86_64::instructions::interrupts::enable(); // 启用中断
 }
 
 pub trait Testable {
