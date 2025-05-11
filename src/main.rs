@@ -38,10 +38,12 @@ pub extern "C" fn _start() -> ! {
     test_main(); // 测试框架入口函数
 
     println!("It did not crash!");
-    loop {
-        use blog_os::print;
-        print!("-");
-    }
+    blog_os::hlt_loop();
+    // loop {
+    //     use blog_os::print;
+    //     print!("-");
+    //     for i in 0..100000{}
+    // }
 }
 
 // 定义 panic 函数，这个函数将在出现 panic 时被调用
@@ -63,7 +65,7 @@ fn panic(_info: &PanicInfo) -> ! {
         println!("{}", _info.message());
     }
 
-    loop {}
+    blog_os::hlt_loop();
 }
 
 // panic handle in test mode

@@ -184,5 +184,5 @@ fn test_println_output() {
             let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
             assert_eq!(char::from(screen_char.ascii_character), c);
         }
-    });
+    }); // 离开作用域，自动释放 lock
 }

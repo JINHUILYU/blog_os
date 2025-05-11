@@ -62,7 +62,14 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
-    loop {}  // 编译器并不知道会关闭 QEMU，所以我们需要一个无限循环来避免编译器警告
+    // loop {}  // 编译器并不知道会关闭 QEMU，所以我们需要一个无限循环来避免编译器警告
+    hlt_loop();
+}
+
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt(); // 让 CPU 进入休眠状态，等待中断
+    }
 }
 
 /// Entry point for `cargo test`
@@ -71,7 +78,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
-    loop {}
+    hlt_loop();
 }
 
 #[cfg(test)]

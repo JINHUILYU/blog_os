@@ -1,33 +1,12 @@
-use crate::gdt;
-use crate::println;
+use crate::{gdt, print,println};
 use lazy_static::lazy_static;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 use pic8259::ChainedPics;
 use spin;
-use crate::print;
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 
-// PIC 映射布局 范围 32-47
-pub const PIC_1_OFFSET: u8 = 32;
-pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
-
-pub static PICS: spin::Mutex<ChainedPics> =
-    spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
-
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)] // 枚举值以 u8 存储
-pub enum InterruptIndex {
-    Timer = PIC_1_OFFSET,
-}
-
-impl InterruptIndex {
-    fn as_u8(self) -> u8 {
-        self as u8
-    }
-    
-    fn as_usize(self) -> usize {
-        usize::from(self.as_u8())
-    }
-}
+// -----------------
+// IDT 中断描述符表
+// -----------------
 
 lazy_static!(
     // 使用 lazy_static 宏来创建一个静态的 IDT 实例
@@ -42,7 +21,10 @@ lazy_static!(
         }
         // 设置定时器中断的处理函数
         idt[InterruptIndex::Timer.as_usize()]
-            .set_handler_fn(timer_interrupt_handler); // 设置定时器中断的处理函数
+            .set_handler_fn(timer_interrupt_handler); // 定时器中断的处理函数
+        // Keyboard 中断的处理函数
+        idt[InterruptIndex::Keyboard.as_usize()]
+            .set_handler_fn(keyboard_interrupt_handler); // 键盘中断的处理函数
         idt
     };
 );
@@ -65,12 +47,35 @@ extern "x86-interrupt" fn double_fault_handler(
     panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame); // 打印异常信息并进入 panic 状态
 }
 
-// 处理定时器中断的函数
-extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    print!(".");
+// 处理键盘中断的函数
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+    use spin::Mutex;
+    use x86_64::instructions::port::Port;
+
+    lazy_static! {
+        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
+            Mutex::new(Keyboard::new(ScancodeSet1::new(),
+                layouts::Us104Key, HandleControl::Ignore)
+            );
+    }
+
+    let mut keyboard = KEYBOARD.lock();
+    let mut port = Port::new(0x60); // 键盘输入端口 PS/2
+
+    let scancode: u8 = unsafe { port.read() }; // 读取键盘输入的扫描码
+    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
+        if let Some(key) = keyboard.process_keyevent(key_event) {
+            match key {
+                DecodedKey::Unicode(character) => print!("{}", character),
+                DecodedKey::RawKey(key) => print!("{:?}", key),
+            }
+        }
+    }
+
     unsafe {
         PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8()); // 通知 PIC 中断结束
+            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8()); // 通知 PIC 中断结束
     }
 }
 
@@ -78,4 +83,40 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 #[test_case]
 fn test_breakpoint_exception() {
     x86_64::instructions::interrupts::int3(); // 触发断点异常
+}
+
+// ---------------
+// PIC 可编程中断控制器
+// ---------------
+// PIC 映射布局 范围 32-47
+pub const PIC_1_OFFSET: u8 = 32;
+pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
+
+pub static PICS: spin::Mutex<ChainedPics> =
+    spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)] // 枚举值以 u8 存储
+pub enum InterruptIndex {
+    Timer = PIC_1_OFFSET,
+    Keyboard,
+}
+
+impl InterruptIndex {
+    fn as_u8(self) -> u8 {
+        self as u8
+    }
+
+    fn as_usize(self) -> usize {
+        usize::from(self.as_u8())
+    }
+}
+
+// 处理定时器中断的函数
+extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    print!(".");
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8()); // 通知 PIC 中断结束
+    }
 }
