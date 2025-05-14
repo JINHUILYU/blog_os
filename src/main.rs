@@ -34,6 +34,27 @@ pub extern "C" fn _start() -> ! {
     // 栈溢出测试
     // stack_overflow();
     
+    // 触发一个页错误
+    // let ptr = 0xdeadbeaf as *mut u8;
+    // unsafe { *ptr = 42; }
+
+    // Note: The actual address might be different for you. Use the address that
+    // your page fault handler reports.
+    // let ptr = 0x2031b2 as *mut u8;
+
+    // read from a code page
+    // unsafe { let x = *ptr; }
+    // println!("read worked");
+
+    // write to a code page
+    // unsafe { *ptr = 42; }
+    // println!("write worked");
+
+    use x86_64::registers::control::Cr3;
+
+    let (level_4_page_table, _) = Cr3::read();
+    println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
+    
     #[cfg(test)]
     test_main(); // 测试框架入口函数
 
